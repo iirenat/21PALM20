@@ -29,7 +29,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content
 #l-de:checked~nav .lang label[for=l-de],#l-ru:checked~nav .lang label[for=l-ru]{background:var(--white);color:var(--black)}
 .nav-cta{font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;border:1px solid var(--white);padding:11px 20px}
 .nav-cta:hover{background:var(--white);color:var(--black)}
-#cw{position:fixed;inset:0;z-index:0;pointer-events:none}
+#cw{position:fixed;inset:0;z-index:0;pointer-events:none;contain:strict;transform:translateZ(0)}
 #cv{width:100%;height:100%;display:block}
 .vig{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 45%,rgba(10,10,10,.75) 100%)}
 main{position:relative;z-index:2}
@@ -102,8 +102,8 @@ var secs=[].slice.call(document.querySelectorAll('.section'));
 function sp(){var h=document.documentElement,m=h.scrollHeight-innerHeight;prog.style.transform='scaleX('+(m>0?scrollY/m:0)+')'}
 addEventListener('scroll',sp,{passive:true});sp();
 if(!window.THREE){return}
-var T=THREE,ren;try{ren=new T.WebGLRenderer({canvas:cv,antialias:true,alpha:true,powerPreference:'high-performance'})}catch(e){return}
-ren.setPixelRatio(Math.min(devicePixelRatio||1,2));ren.outputColorSpace=T.SRGBColorSpace;
+var T=THREE,ren;try{ren=new T.WebGLRenderer({canvas:cv,antialias:(devicePixelRatio||1)<2,alpha:true,powerPreference:'high-performance'})}catch(e){return}
+ren.setPixelRatio(Math.min(devicePixelRatio||1,innerWidth<820?1.5:1.75));ren.outputColorSpace=T.SRGBColorSpace;
 var scene=new T.Scene(),cam=new T.PerspectiveCamera(32,1,.1,100);cam.position.set(0,0,9);
 scene.add(new T.AmbientLight(0xffffff,.55));
 var key=new T.DirectionalLight(0xfff1dc,2.2);key.position.set(3,4,6);scene.add(key);
@@ -128,23 +128,30 @@ var y=92;y=bub('Willkommen im Studio Mayen 💜|Buchen Sie Ihren Termin in 30 Se
 ['💈 Barbershop','💅 Nagelstudio'].forEach(function(l){x.fillStyle='#1f3347';x.beginPath();x.roundRect(16,y,358,40,10);x.fill();x.fillStyle='#8ec3f4';x.font='500 14px Inter,sans-serif';x.textAlign='center';x.fillText(l,195,y+25);x.textAlign='left';y+=48});
 y+=8;y=bub('✅ Termin bestätigt!|Haarschnitt + Bart · Marco|Wir erinnern Sie einen Tag vorher.',y,0);
 x.fillStyle='rgba(200,169,110,.9)';x.font='500 11px Inter,sans-serif';x.fillText('DEMO',24,758);return c}
-srcs.forEach(function(s,i){if(i===3){var t=new T.CanvasTexture(chat());t.colorSpace=T.SRGBColorSpace;t.anisotropy=8;TEX[3]=t;return}
-var img=new Image();img.onload=function(){var t=new T.Texture(img);fit(t,img);TEX[i]=t;if(cur===i)apply()};img.src=s});
+srcs.forEach(function(s,i){if(i===3){var t=new T.CanvasTexture(chat());t.colorSpace=T.SRGBColorSpace;t.anisotropy=8;TEX[3]=t;ren.initTexture(t);return}
+var img=new Image();img.onload=function(){var t=new T.Texture(img);fit(t,img);TEX[i]=t;ren.initTexture(t);if(cur===i)apply();wake()};img.src=s});
 var cur=0;function apply(){if(TEX[cur]){smat.map=TEX[cur];smat.color.set(0xffffff);smat.needsUpdate=true}}
 /* позы под секции: [x, y, rotY, scale] (x в долях половины ширины кадра) */
 var POSE={0:[.72,.28,-.5,1.4],1:[.72,0,-.38,1.6],2:[-.72,0,.38,1.6],3:[.72,0,-.38,1.6],4:[-.72,0,.38,1.6],5:[.55,0,0,.001],6:[.55,0,0,.001],7:[.55,0,-.3,.001]};
 var TXI={0:0,1:0,2:1,3:2,4:3,5:3,6:3,7:3};
 var tgt={x:0,y:0,r:0,s:1},st={x:0,y:0,r:0,s:1},spin=0,spinT=0,lastIdx=-1,mx=0,my=0;
-addEventListener('pointermove',function(e){mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5},{passive:true});
+addEventListener('pointermove',function(e){if(e.pointerType==='touch')return;mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5;wake()},{passive:true});
 function size(){var w=innerWidth,h=innerHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();return w/h}
-var asp=size();addEventListener('resize',function(){asp=size()});
-function pick(){var mid=innerHeight*.5,best=0,bd=1e9;secs.forEach(function(s,i){var r=s.getBoundingClientRect(),c=(r.top+r.bottom)/2,d=Math.abs(c-mid);if(r.top<mid&&r.bottom>mid){d=0}if(d<bd){bd=d;best=+s.dataset.i}});return best}
+var asp=size(),need=true,pend=0;
+function wake(){need=true;pend=performance.now()+1800}
+addEventListener('resize',function(){asp=size();mkTops();wake()});addEventListener('scroll',wake,{passive:true});
+var tops=[];function mkTops(){tops=secs.map(function(s){var r=s.getBoundingClientRect();return{i:+s.dataset.i,a:r.top+scrollY,b:r.bottom+scrollY}})}
+mkTops();addEventListener('load',function(){mkTops();wake()});
+function pick(){var m=scrollY+innerHeight*.5,best=0,bd=1e9;for(var k=0;k<tops.length;k++){var s=tops[k],d=(m>=s.a&&m<=s.b)?0:Math.min(Math.abs(m-s.a),Math.abs(m-s.b));if(d<bd){bd=d;best=s.i}}return best}
 var halfW=function(){return Math.tan(cam.fov*Math.PI/360)*cam.position.z*cam.aspect};
-var clock=new T.Clock(),vis=true;document.addEventListener('visibilitychange',function(){vis=!document.hidden});
-function frame(){requestAnimationFrame(frame);if(!vis)return;var dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime,i=pick(),P=POSE[i],narrow=cam.aspect<.85;
-if(i!==lastIdx){lastIdx=i;if(TXI[i]!==cur){cur=TXI[i];apply();spinT=1;spin+=Math.PI*2}}
+var vis=true,prev=performance.now();document.addEventListener('visibilitychange',function(){vis=!document.hidden;if(vis){prev=performance.now();wake()}});
+function frame(now){requestAnimationFrame(frame);if(!vis)return;var dt=Math.min((now-prev)/1000,.05);prev=now;
+if(!need&&now>pend)return;var t=now/1000,i=pick(),P=POSE[i],narrow=cam.aspect<.85;
+if(i!==lastIdx){lastIdx=i;if(TXI[i]!==cur){cur=TXI[i];apply();spin+=Math.PI*2}}
 var hx=halfW();tgt.x=narrow?0:P[0]*hx*.62;tgt.y=narrow?(i>=5?0:.55):P[1];tgt.r=P[2]+spin;tgt.s=P[3]*(narrow?.62:1);
-var k=1-Math.pow(.004,dt);st.x+=(tgt.x-st.x)*k;st.y+=(tgt.y-st.y)*k;st.r+=(tgt.r-st.r)*k;st.s+=(tgt.s-st.s)*k;
+var k=1-Math.pow(.004,dt),dx=tgt.x-st.x,dy=tgt.y-st.y,dr=tgt.r-st.r,ds=tgt.s-st.s;
+st.x+=dx*k;st.y+=dy*k;st.r+=dr*k;st.s+=ds*k;
 phone.position.set(st.x+mx*.12,st.y+Math.sin(t*.8)*.05-my*.08,0);phone.rotation.set(-my*.12+Math.sin(t*.6)*.02,st.r+mx*.18,Math.sin(t*.5)*.015);phone.scale.setScalar(Math.max(st.s,.0001));
-ren.render(scene,cam)}
-frame();})();</script></body></html>
+ren.render(scene,cam);
+if(Math.abs(dx)+Math.abs(dy)+Math.abs(dr)+Math.abs(ds)>.002){pend=now+400}need=false}
+requestAnimationFrame(frame);})();</script></body></html>
